@@ -1,0 +1,42 @@
+{
+  "kind": "collectionType",
+  "collectionName": "podcast_shows",
+  "info": {
+    "singularName": "podcast-show",
+    "pluralName": "podcast-shows",
+    "displayName": "Podcast Show",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "Name": {
+      "type": "string",
+      "required": true
+    },
+    "hosts": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "plugin::users-permissions.user"
+    },
+    "description": {
+      "type": "blocks"
+    },
+    "logo": {
+      "type": "media",
+      "multiple": false,
+      "required": false,
+      "allowedTypes": [
+        "images"
+      ]
+    },
+    "posts": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::post.post",
+      "mappedBy": "podcast_show"
+    }
+  }
+}

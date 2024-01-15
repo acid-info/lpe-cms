@@ -898,7 +898,14 @@ export interface ApiPostPost extends Schema.CollectionType {
     cover_image: Attribute.Media;
     tags: Attribute.Relation<'api::post.post', 'manyToMany', 'api::tag.tag'>;
     channel: Attribute.Component<'cat.channel', true>;
-    credits: Attribute.RichText;
+    credits: Attribute.RichText &
+      Attribute.CustomField<
+        'plugin::ckeditor.CKEditor',
+        {
+          output: 'HTML';
+          preset: 'standard';
+        }
+      >;
     createdAt: Attribute.DateTime;
     updatedAt: Attribute.DateTime;
     publishedAt: Attribute.DateTime;

@@ -1,15 +1,19 @@
 {
   "name": "lpe-backend",
-  "private": true,
   "version": "0.1.0",
+  "private": true,
   "description": "A Strapi application",
+  "license": "MIT",
+  "author": {
+    "name": "A Strapi developer"
+  },
   "scripts": {
-    "develop": "strapi develop",
-    "start": "strapi start",
     "build": "strapi build",
+    "develop": "strapi develop",
+    "postinstall": "patch-package",
+    "start": "strapi start",
     "strapi": "strapi"
   },
-  "devDependencies": {},
   "dependencies": {
     "@ckeditor/strapi-plugin-ckeditor": "^0.0.10",
     "@strapi/plugin-cloud": "4.16.2",
@@ -21,18 +25,16 @@
     "react": "^18.0.0",
     "react-dom": "^18.0.0",
     "react-router-dom": "5.3.4",
-    "strapi-tiptap-editor": "^0.9.12",
     "styled-components": "5.3.3"
   },
-  "author": {
-    "name": "A Strapi developer"
-  },
-  "strapi": {
-    "uuid": "9b5f904c-71c6-4d98-933f-8b5e03918336"
+  "devDependencies": {
+    "patch-package": "^8.0.0"
   },
   "engines": {
     "node": ">=18.0.0 <=20.x.x",
     "npm": ">=6.0.0"
   },
-  "license": "MIT"
+  "strapi": {
+    "uuid": "9b5f904c-71c6-4d98-933f-8b5e03918336"
+  }
 }

@@ -818,7 +818,14 @@ export interface ApiPodcastShowPodcastShow extends Schema.CollectionType {
       'oneToMany',
       'api::author.author'
     >;
-    description: Attribute.Blocks;
+    description: Attribute.RichText &
+      Attribute.CustomField<
+        'plugin::ckeditor.CKEditor',
+        {
+          output: 'HTML';
+          preset: 'standard';
+        }
+      >;
     logo: Attribute.Media;
     posts: Attribute.Relation<
       'api::podcast-show.podcast-show',
@@ -862,6 +869,22 @@ export interface ApiPostPost extends Schema.CollectionType {
     type: Attribute.Enumeration<['Article', 'Episode']> &
       Attribute.DefaultTo<'Article'>;
     episode_number: Attribute.Integer;
+    summary: Attribute.RichText &
+      Attribute.CustomField<
+        'plugin::ckeditor.CKEditor',
+        {
+          output: 'HTML';
+          preset: 'standard';
+        }
+      >;
+    body: Attribute.RichText &
+      Attribute.CustomField<
+        'plugin::ckeditor.CKEditor',
+        {
+          output: 'HTML';
+          preset: 'standard';
+        }
+      >;
     authors: Attribute.Relation<
       'api::post.post',
       'oneToMany',
@@ -875,8 +898,6 @@ export interface ApiPostPost extends Schema.CollectionType {
     cover_image: Attribute.Media;
     tags: Attribute.Relation<'api::post.post', 'manyToMany', 'api::tag.tag'>;
     channel: Attribute.Component<'cat.channel', true>;
-    summary: Attribute.RichText;
-    body: Attribute.RichText;
     credits: Attribute.RichText;
     createdAt: Attribute.DateTime;
     updatedAt: Attribute.DateTime;

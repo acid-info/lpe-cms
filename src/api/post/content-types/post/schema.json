@@ -27,14 +27,27 @@
     },
     "type": {
       "type": "enumeration",
-      "enum": [
-        "Article",
-        "Episode"
-      ],
+      "enum": ["Article", "Episode"],
       "default": "Article"
     },
     "episode_number": {
       "type": "integer"
+    },
+    "summary": {
+      "type": "customField",
+      "options": {
+        "output": "HTML",
+        "preset": "standard"
+      },
+      "customField": "plugin::ckeditor.CKEditor"
+    },
+    "body": {
+      "type": "customField",
+      "options": {
+        "output": "HTML",
+        "preset": "standard"
+      },
+      "customField": "plugin::ckeditor.CKEditor"
     },
     "authors": {
       "type": "relation",
@@ -51,9 +64,7 @@
       "type": "media",
       "multiple": false,
       "required": false,
-      "allowedTypes": [
-        "images"
-      ]
+      "allowedTypes": ["images"]
     },
     "tags": {
       "type": "relation",
@@ -66,12 +77,6 @@
       "type": "component",
       "repeatable": true,
       "component": "cat.channel"
-    },
-    "summary": {
-      "type": "richtext"
-    },
-    "body": {
-      "type": "richtext"
     },
     "credits": {
       "type": "richtext"

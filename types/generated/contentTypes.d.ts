@@ -800,6 +800,40 @@ export interface ApiAuthorAuthor extends Schema.CollectionType {
   };
 }
 
+export interface ApiPagePage extends Schema.CollectionType {
+  collectionName: 'pages';
+  info: {
+    singularName: 'page';
+    pluralName: 'pages';
+    displayName: 'Page';
+    description: '';
+  };
+  options: {
+    draftAndPublish: true;
+  };
+  attributes: {
+    title: Attribute.String;
+    slug: Attribute.UID<'api::page.page', 'title'>;
+    body: Attribute.RichText &
+      Attribute.CustomField<
+        'plugin::ckeditor.CKEditor',
+        {
+          output: 'HTML';
+          preset: 'standard';
+        }
+      >;
+    subtitle: Attribute.String;
+    description: Attribute.Text;
+    createdAt: Attribute.DateTime;
+    updatedAt: Attribute.DateTime;
+    publishedAt: Attribute.DateTime;
+    createdBy: Attribute.Relation<'api::page.page', 'oneToOne', 'admin::user'> &
+      Attribute.Private;
+    updatedBy: Attribute.Relation<'api::page.page', 'oneToOne', 'admin::user'> &
+      Attribute.Private;
+  };
+}
+
 export interface ApiPodcastShowPodcastShow extends Schema.CollectionType {
   collectionName: 'podcast_shows';
   info: {
@@ -812,7 +846,7 @@ export interface ApiPodcastShowPodcastShow extends Schema.CollectionType {
     draftAndPublish: true;
   };
   attributes: {
-    Name: Attribute.String & Attribute.Required;
+    name: Attribute.String & Attribute.Required;
     hosts: Attribute.Relation<
       'api::podcast-show.podcast-show',
       'oneToMany',
@@ -832,6 +866,7 @@ export interface ApiPodcastShowPodcastShow extends Schema.CollectionType {
       'oneToMany',
       'api::post.post'
     >;
+    slug: Attribute.UID<'api::podcast-show.podcast-show', 'name'>;
     createdAt: Attribute.DateTime;
     updatedAt: Attribute.DateTime;
     publishedAt: Attribute.DateTime;
@@ -906,6 +941,12 @@ export interface ApiPostPost extends Schema.CollectionType {
           preset: 'standard';
         }
       >;
+    featured: Attribute.Boolean & Attribute.DefaultTo<false>;
+    related_posts: Attribute.Relation<
+      'api::post.post',
+      'oneToMany',
+      'api::post.post'
+    >;
     createdAt: Attribute.DateTime;
     updatedAt: Attribute.DateTime;
     publishedAt: Attribute.DateTime;
@@ -958,6 +999,7 @@ declare module '@strapi/types' {
       'plugin::users-permissions.role': PluginUsersPermissionsRole;
       'plugin::users-permissions.user': PluginUsersPermissionsUser;
       'api::author.author': ApiAuthorAuthor;
+      'api::page.page': ApiPagePage;
       'api::podcast-show.podcast-show': ApiPodcastShowPodcastShow;
       'api::post.post': ApiPostPost;
       'api::tag.tag': ApiTagTag;

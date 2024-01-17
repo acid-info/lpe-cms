@@ -27,7 +27,10 @@
     },
     "type": {
       "type": "enumeration",
-      "enum": ["Article", "Episode"],
+      "enum": [
+        "Article",
+        "Episode"
+      ],
       "default": "Article"
     },
     "episode_number": {
@@ -64,7 +67,9 @@
       "type": "media",
       "multiple": false,
       "required": false,
-      "allowedTypes": ["images"]
+      "allowedTypes": [
+        "images"
+      ]
     },
     "tags": {
       "type": "relation",
@@ -85,6 +90,16 @@
         "preset": "standard"
       },
       "customField": "plugin::ckeditor.CKEditor"
+    },
+    "featured": {
+      "type": "boolean",
+      "default": false,
+      "required": false
+    },
+    "related_posts": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::post.post"
     }
   }
 }

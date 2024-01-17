@@ -12,7 +12,7 @@
   },
   "pluginOptions": {},
   "attributes": {
-    "Name": {
+    "name": {
       "type": "string",
       "required": true
     },
@@ -33,13 +33,19 @@
       "type": "media",
       "multiple": false,
       "required": false,
-      "allowedTypes": ["images"]
+      "allowedTypes": [
+        "images"
+      ]
     },
     "posts": {
       "type": "relation",
       "relation": "oneToMany",
       "target": "api::post.post",
       "mappedBy": "podcast_show"
+    },
+    "slug": {
+      "type": "uid",
+      "targetField": "name"
     }
   }
 }

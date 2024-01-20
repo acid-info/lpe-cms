@@ -1,0 +1,1 @@
+export { registerGraphqlSearch } from "./graphql";

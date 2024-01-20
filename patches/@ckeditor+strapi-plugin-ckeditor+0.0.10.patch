@@ -1,32 +1,758 @@
 diff --git a/node_modules/@ckeditor/strapi-plugin-ckeditor/admin/src/components/CKEditorInput/Configurator.js b/node_modules/@ckeditor/strapi-plugin-ckeditor/admin/src/components/CKEditorInput/Configurator.js
-index 73ea2b9..82799e7 100644
+index 73ea2b9..aaead3e 100644
 --- a/node_modules/@ckeditor/strapi-plugin-ckeditor/admin/src/components/CKEditorInput/Configurator.js
 +++ b/node_modules/@ckeditor/strapi-plugin-ckeditor/admin/src/components/CKEditorInput/Configurator.js
-@@ -97,6 +97,8 @@ const CKEDITOR_BASE_CONFIG_FOR_PRESETS = {
-       window.CKEditor5.autoformat.Autoformat,
-       window.CKEditor5.basicStyles.Bold,
-       window.CKEditor5.basicStyles.Italic,
-+      window.CKEditor5.basicStyles.Underline,
-+      window.CKEditor5.basicStyles.Strikethrough,
-       window.CKEditor5.blockQuote.BlockQuote,
-       window.CKEditor5.codeBlock.CodeBlock,
-       window.CKEditor5.essentials.Essentials,
-@@ -125,16 +127,15 @@ const CKEDITOR_BASE_CONFIG_FOR_PRESETS = {
+@@ -25,6 +25,7 @@ import ckeditor5TableDll from "@ckeditor/ckeditor5-table/build/table.js";
+ import ckeditor5WordCountDll from "@ckeditor/ckeditor5-word-count/build/word-count.js";
+ import ckeditor5MaximumLengthDll from "@reinmar/ckeditor5-maximum-length/build/maximum-length.js";
+ import { StrapiMediaLib } from "./plugins/StrapiMediaLib";
++import Footnote from './plugins/footnote/footnote';
+ 
+ const CKEDITOR_BASE_CONFIG_FOR_PRESETS = {
+   light: {
+@@ -118,14 +119,15 @@ const CKEDITOR_BASE_CONFIG_FOR_PRESETS = {
+       window.CKEditor5.table.TableColumnResize,
+       window.CKEditor5.table.TableCaption,
+       window.CKEditor5.wordCount.WordCount,
+-      StrapiMediaLib
++      StrapiMediaLib,
++      Footnote,
+     ],
+     toolbar: [
+         'undo', 'redo',
          '|',
          'heading',
          '|',
 -        'bold', 'italic',
-+        'bold', 'italic', 'underline', 'strikethrough',
++        'bold', 'italic', 'footnote',
          '|',
--        'link', 'strapiMediaLib', 'mediaEmbed', 'blockQuote', 'insertTable', 'codeBlock',
-+        'link', 'strapiMediaLib', 'mediaEmbed', 'blockQuote',
+         'link', 'strapiMediaLib', 'mediaEmbed', 'blockQuote', 'insertTable', 'codeBlock',
          '|',
-         'bulletedList', 'numberedList', 'outdent', 'indent'
-     ],
-     heading: {
-       options: [
-         { model: 'paragraph', title: 'Paragraph', class: 'ck-heading_paragraph' },
--        { model: 'heading1', view: 'h1', title: 'Heading 1', class: 'ck-heading_heading1' },
-         { model: 'heading2', view: 'h2', title: 'Heading 2', class: 'ck-heading_heading2' },
-         { model: 'heading3', view: 'h3', title: 'Heading 3', class: 'ck-heading_heading3' },
-         { model: 'heading4', view: 'h4', title: 'Heading 4', class: 'ck-heading_heading4' },
+diff --git a/node_modules/@ckeditor/strapi-plugin-ckeditor/admin/src/components/CKEditorInput/plugins/footnote/constants.js b/node_modules/@ckeditor/strapi-plugin-ckeditor/admin/src/components/CKEditorInput/plugins/footnote/constants.js
+new file mode 100644
+index 0000000..416ff9e
+--- /dev/null
++++ b/node_modules/@ckeditor/strapi-plugin-ckeditor/admin/src/components/CKEditorInput/plugins/footnote/constants.js
+@@ -0,0 +1,23 @@
++export const ELEMENT_TYPE = {
++	FOOTNOTE: 'footnote',
++	CONTAINER: 'footnotesContainer',
++	EDITOR: 'footnoteEditor',
++};
++
++export const FOOTNOTE_ATTRIBUTE = {
++	ID: 'id',
++	INDEX: 'index',
++	CONTENT: 'content',
++};
++
++export const FOOTNOTE_DOM_ATTRIBUTE = {
++	ID: 'data-id',
++	INDEX: 'data-index',
++	CONTENT: 'data-content',
++};
++
++export const FOOTNOTE_CLASS = {
++	FOOTNOTE: 'footnote',
++	EDITOR: 'footnote-editor',
++	CONTAINER: 'footnotes-container',
++};
+diff --git a/node_modules/@ckeditor/strapi-plugin-ckeditor/admin/src/components/CKEditorInput/plugins/footnote/footnote.js b/node_modules/@ckeditor/strapi-plugin-ckeditor/admin/src/components/CKEditorInput/plugins/footnote/footnote.js
+new file mode 100644
+index 0000000..0fa4caa
+--- /dev/null
++++ b/node_modules/@ckeditor/strapi-plugin-ckeditor/admin/src/components/CKEditorInput/plugins/footnote/footnote.js
+@@ -0,0 +1,11 @@
++import FootNoteEditing from './footnoteediting';
++import FootNoteUI from './footnoteui';
++// import Plugin from '@ckeditor/ckeditor5-core/src/plugin';
++
++const Plugin = window.CKEditor5.core.Plugin;
++
++export default class Footnote extends Plugin {
++	static get requires() {
++		return [FootNoteEditing, FootNoteUI];
++	}
++}
+diff --git a/node_modules/@ckeditor/strapi-plugin-ckeditor/admin/src/components/CKEditorInput/plugins/footnote/footnoteediting.js b/node_modules/@ckeditor/strapi-plugin-ckeditor/admin/src/components/CKEditorInput/plugins/footnote/footnoteediting.js
+new file mode 100644
+index 0000000..79d02fa
+--- /dev/null
++++ b/node_modules/@ckeditor/strapi-plugin-ckeditor/admin/src/components/CKEditorInput/plugins/footnote/footnoteediting.js
+@@ -0,0 +1,302 @@
++// import Plugin from '@ckeditor/ckeditor5-core/src/plugin';
++// import {
++// 	toWidget,
++// 	toWidgetEditable,
++// 	viewToModelPositionOutsideModelElement,
++// } from '@ckeditor/ckeditor5-widget/src/utils';
++// import Widget from '@ckeditor/ckeditor5-widget/src/widget';
++
++const Widget = CKEditor5.widget.Widget;
++const Plugin = window.CKEditor5.core.Plugin;
++const toWidget = window.CKEditor5.widget.toWidget;
++const toWidgetEditable = window.CKEditor5.widget.toWidgetEditable;
++const viewToModelPositionOutsideModelElement = window.CKEditor5.widget.viewToModelPositionOutsideModelElement;
++
++import {
++	ELEMENT_TYPE,
++	FOOTNOTE_ATTRIBUTE,
++	FOOTNOTE_CLASS,
++	FOOTNOTE_DOM_ATTRIBUTE,
++} from './constants';
++import InsertFootNoteCommand from './insertfootnotecommand';
++import {
++	createFootnoteEditorModel,
++	createFootnoteEditorView,
++	createFootnoteModel,
++	createFootnoteView,
++	findNodes,
++	getFootnoteContainer,
++	loadFootnoteContent,
++	refreshFootnoteIndex,
++	storeFootnoteContent,
++} from './utils';
++
++export default class FootNoteEditing extends Plugin {
++	static get requires() {
++		return [Widget];
++	}
++
++	footnotes = [];
++
++	init() {
++		this._defineSchema();
++		this._defineConverters();
++
++		this.editor.commands.add(
++			'insertFootnote',
++			new InsertFootNoteCommand(this.editor)
++		);
++
++		this.editor.editing.mapper.on(
++			'viewToModelPosition',
++			viewToModelPositionOutsideModelElement(this.editor.model, (viewElement) =>
++				viewElement.hasClass(ELEMENT_TYPE.FOOTNOTE)
++			)
++		);
++
++		let initialized = false;
++
++		this.editor.model.document.on('change', (ev) => {
++			if (ev.name === 'change:data') {
++				if (!initialized) {
++					this.refreshContainer();
++					initialized = true;
++				}
++
++				const changed = refreshFootnoteIndex(this.editor, this.footnotes);
++				if (changed) {
++					this.footnotes = changed;
++					this.refreshContainer();
++				}
++
++				storeFootnoteContent(this.editor);
++			}
++		});
++
++		this.editor.model.document.on('change', (ev) => {
++			const changes = this.editor.model.document.differ.getChanges();
++			if (
++				changes.find(
++					(change) =>
++						change.name === 'footnote' || change.name === 'footnoteEditor'
++				)
++			) {
++				this.editor.model.change((writer) => {
++					const container = getFootnoteContainer(this.editor);
++					this.editor.editing.reconvertItem(container);
++				});
++			}
++		});	
++	}
++
++	_defineSchema() {
++		const schema = this.editor.model.schema;
++
++		schema.register(ELEMENT_TYPE.FOOTNOTE, {
++			inheritAllFrom: '$inlineObject',
++			allowAttributes: [
++				FOOTNOTE_ATTRIBUTE.ID,
++				FOOTNOTE_ATTRIBUTE.INDEX,
++				FOOTNOTE_ATTRIBUTE.CONTENT,
++			],
++		});
++
++		schema.register(ELEMENT_TYPE.CONTAINER, {
++			inheritAllFrom: '$blockObject',
++			isBlock: true,
++			isLimit: false,
++			isObject: false,
++			allowIn: 'document',
++			allowChildren: [ELEMENT_TYPE.EDITOR],
++			isContent: true,
++			isInline: false,
++			isSelectable: false,
++		});
++
++		schema.register(ELEMENT_TYPE.EDITOR, {
++			allowAttributes: [
++				FOOTNOTE_ATTRIBUTE.ID,
++				FOOTNOTE_ATTRIBUTE.INDEX,
++				FOOTNOTE_ATTRIBUTE.CONTENT,
++			],
++			allowIn: ELEMENT_TYPE.CONTAINER,
++			allowChildren: ['$text'],
++			isLimit: true,
++		});
++
++		schema.addChildCheck((ctx, def) => {
++			if (def.name === ELEMENT_TYPE.FOOTNOTE) {
++				return !ctx.endsWith(ELEMENT_TYPE.EDITOR);
++			}
++		});
++	}
++
++	_defineConverters() {
++		const conversion = this.editor.conversion;
++
++		// footnotes box
++		conversion.for('upcast').elementToElement({
++			model: ELEMENT_TYPE.CONTAINER,
++			view: {
++				name: 'section',
++				classes: [FOOTNOTE_CLASS.CONTAINER],
++			},
++		});
++		conversion.for('dataDowncast').elementToElement({
++			model: ELEMENT_TYPE.CONTAINER,
++			view: {
++				name: 'section',
++				classes: [FOOTNOTE_CLASS.CONTAINER],
++			},
++		});
++		conversion.for('editingDowncast').elementToElement({
++			model: ELEMENT_TYPE.CONTAINER,
++			view: (modelElement, { writer: viewWriter }) => {
++				const section = viewWriter.createEditableElement('section', {
++					class: FOOTNOTE_CLASS.CONTAINER,
++				});
++
++				viewWriter.setCustomProperty(ELEMENT_TYPE.CONTAINER, true, section);
++
++				return toWidget(section, viewWriter);
++			},
++		});
++
++		// footnoteItem
++		conversion.for('upcast').elementToElement({
++			view: {
++				name: 'div',
++				classes: FOOTNOTE_CLASS.EDITOR,
++			},
++			model: (viewElement, { writer: modelWriter }) =>
++				createFootnoteEditorModel(viewElement, modelWriter),
++		});
++
++		conversion.for('dataDowncast').elementToElement({
++			model: ELEMENT_TYPE.EDITOR,
++			view: (modelElement, { writer: viewWriter }) =>
++				createFootnoteEditorView(modelElement, viewWriter),
++		});
++
++		conversion.for('editingDowncast').elementToElement({
++			model: ELEMENT_TYPE.EDITOR,
++			view: (modelElement, { writer: viewWriter }) =>
++				toWidgetEditable(
++					createFootnoteEditorView(modelElement, viewWriter),
++					viewWriter
++				),
++		});
++
++		// anchor
++
++		conversion.for('upcast').elementToElement({
++			view: {
++				name: 'sup',
++				classes: [ELEMENT_TYPE.FOOTNOTE],
++			},
++			model: (viewElement, { writer: modelWriter }) =>
++				createFootnoteModel(viewElement, modelWriter),
++		});
++
++		conversion.for('editingDowncast').elementToElement({
++			model: ELEMENT_TYPE.FOOTNOTE,
++			view: (modelItem, { writer: viewWriter }) => {
++				const widgetElement = createFootnoteView(modelItem, viewWriter);
++				const widget = toWidget(widgetElement, viewWriter);
++
++				viewWriter.setCustomProperty(ELEMENT_TYPE.FOOTNOTE, true, widget);
++
++				return widget;
++			},
++		});
++
++		conversion.for('dataDowncast').elementToElement({
++			model: ELEMENT_TYPE.FOOTNOTE,
++			view: (modelItem, { writer: viewWriter }) =>
++				createFootnoteView(modelItem, viewWriter),
++		});
++
++		conversion.for('downcast').attributeToAttribute({
++			model: {
++				name: ELEMENT_TYPE.FOOTNOTE,
++				key: FOOTNOTE_ATTRIBUTE.ID,
++			},
++			view: FOOTNOTE_DOM_ATTRIBUTE.ID,
++		});
++
++		conversion.for('downcast').attributeToAttribute({
++			model: {
++				name: ELEMENT_TYPE.FOOTNOTE,
++				key: FOOTNOTE_ATTRIBUTE.INDEX,
++			},
++			view: FOOTNOTE_DOM_ATTRIBUTE.INDEX,
++		});
++
++		conversion.for('downcast').attributeToAttribute({
++			model: {
++				name: ELEMENT_TYPE.FOOTNOTE,
++				key: FOOTNOTE_ATTRIBUTE.CONTENT,
++			},
++			view: FOOTNOTE_DOM_ATTRIBUTE.CONTENT,
++		});
++
++		conversion.for('downcast').attributeToElement({
++			model: {
++				name: ELEMENT_TYPE.FOOTNOTE,
++				key: FOOTNOTE_ATTRIBUTE.INDEX,
++			},
++			view: (modelItem, { writer: viewWriter }) => {
++				return createFootnoteView(modelItem, viewWriter);
++			},
++		});
++
++		conversion.for('editingDowncast').add((dispatcher) => {
++			dispatcher.on(
++				`attribute:${FOOTNOTE_ATTRIBUTE.INDEX}:${ELEMENT_TYPE.FOOTNOTE}`,
++				(evt, data, conversionApi) => {
++					if (!data.attributeNewValue) return;
++
++					const modelElement = data.item;
++					const viewElement = conversionApi.mapper.toViewElement(modelElement);
++					const writer = conversionApi.writer;
++
++					writer.remove(viewElement.getChild(0));
++					writer.insert(
++						writer.createPositionAt(viewElement, 0),
++						writer.createText(`[${data.attributeNewValue}]`)
++					);
++				}
++			);
++		});
++	}
++
++	refreshContainer = () => {
++		const container = getFootnoteContainer(this.editor);
++
++		{
++			const editorBlocks = Array.from(container.getChildren());
++
++			editorBlocks.forEach((editorBlock, index) => {
++				this.editor.model.change((writer) => {
++					
++					writer.remove(editorBlock);
++				});
++			});
++		}
++
++		this.editor.model.change((writer) => {
++			const footnotes = findNodes(
++				writer,
++				ELEMENT_TYPE.FOOTNOTE,
++				this.editor.model.document.getRoot()
++			);
++
++			footnotes.forEach((footnote, index) => {
++				writer.append(
++					loadFootnoteContent(this.editor, writer, footnote, index),
++					container
++				);
++			});
++		});
++	};
++}
+diff --git a/node_modules/@ckeditor/strapi-plugin-ckeditor/admin/src/components/CKEditorInput/plugins/footnote/footnoteui.js b/node_modules/@ckeditor/strapi-plugin-ckeditor/admin/src/components/CKEditorInput/plugins/footnote/footnoteui.js
+new file mode 100644
+index 0000000..a4d5167
+--- /dev/null
++++ b/node_modules/@ckeditor/strapi-plugin-ckeditor/admin/src/components/CKEditorInput/plugins/footnote/footnoteui.js
+@@ -0,0 +1,32 @@
++// import Plugin from '@ckeditor/ckeditor5-core/src/plugin';
++// import pilcrowIcon from '@ckeditor/ckeditor5-core/theme/icons/pilcrow.svg';
++// import { ButtonView } from '@ckeditor/ckeditor5-ui';
++
++const Plugin = window.CKEditor5.core.Plugin;
++const ButtonView = window.CKEditor5.ui.ButtonView;
++const pilcrowIcon = window.CKEditor5.core.icons.pilcrow;
++
++export default class FootNoteUI extends Plugin {
++	init() {
++		const editor = this.editor;
++		const t = editor.t;
++
++		editor.ui.componentFactory.add('footnote', (locale) => {
++			const command = editor.commands.get('insertFootnote');
++
++			const buttonView = new ButtonView(locale);
++			buttonView.label = t('Insert footnote');
++			buttonView.withText = false;
++			buttonView.tooltip = true;
++			buttonView.icon = pilcrowIcon;
++
++			buttonView.bind('isOn', 'isEnabled').to(command, 'value', 'isEnabled');
++
++			this.listenTo(buttonView, 'execute', () =>
++				editor.execute('insertFootnote', { value: 'footnote' })
++			);
++
++			return buttonView;
++		});
++	}
++}
+diff --git a/node_modules/@ckeditor/strapi-plugin-ckeditor/admin/src/components/CKEditorInput/plugins/footnote/index.js b/node_modules/@ckeditor/strapi-plugin-ckeditor/admin/src/components/CKEditorInput/plugins/footnote/index.js
+new file mode 100644
+index 0000000..c867913
+--- /dev/null
++++ b/node_modules/@ckeditor/strapi-plugin-ckeditor/admin/src/components/CKEditorInput/plugins/footnote/index.js
+@@ -0,0 +1,13 @@
++/**
++ * @file The build process always expects an index.js file. Anything exported
++ * here will be recognized by CKEditor 5 as an available plugin. Multiple
++ * plugins can be exported in this one file.
++ *
++ * I.e. this file's purpose is to make plugin(s) discoverable.
++ */
++
++import FootNote from './footnote';
++
++export default {
++	FootNote,
++};
+diff --git a/node_modules/@ckeditor/strapi-plugin-ckeditor/admin/src/components/CKEditorInput/plugins/footnote/insertfootnotecommand.js b/node_modules/@ckeditor/strapi-plugin-ckeditor/admin/src/components/CKEditorInput/plugins/footnote/insertfootnotecommand.js
+new file mode 100644
+index 0000000..2de59ea
+--- /dev/null
++++ b/node_modules/@ckeditor/strapi-plugin-ckeditor/admin/src/components/CKEditorInput/plugins/footnote/insertfootnotecommand.js
+@@ -0,0 +1,53 @@
++// import Command from '@ckeditor/ckeditor5-core/src/command';
++import * as uuid from 'uuid';
++import { ELEMENT_TYPE, FOOTNOTE_ATTRIBUTE } from './constants';
++import { getFootnoteContainer } from './utils';
++
++const Command = window.CKEditor5.core.Command;
++
++export default class InsertFootNoteCommand extends Command {
++	execute({ value }) {
++		const editor = this.editor;
++		const model = editor.model;
++
++		const id = uuid.v4();
++
++		const container = getFootnoteContainer(this.editor);
++
++		model.change((writer) => {
++			const footnoteAnchor = writer.createElement(ELEMENT_TYPE.FOOTNOTE, {
++				[FOOTNOTE_ATTRIBUTE.ID]: id,
++				[FOOTNOTE_ATTRIBUTE.INDEX]: '0',
++				[FOOTNOTE_ATTRIBUTE.CONTENT]: ' ',
++			});
++
++			const selection = model.document.selection;
++			model.insertContent(footnoteAnchor, selection);
++		});
++
++		const items = Array.from(container.getChildren());
++		const item = items.find(
++			(item) => item.getAttribute(FOOTNOTE_ATTRIBUTE.ID) === id
++		);
++
++		setTimeout(() => {
++			if (item) {
++				model.change((writer) => {
++					writer.setSelection(item, 'after');
++					editor.focus();
++				});
++			}
++		}, 0);
++	}
++
++	refresh() {
++		const model = this.editor.model;
++		const selection = model.document.selection;
++		const allowedIn = model.schema.findAllowedParent(
++			selection.getLastPosition(),
++			ELEMENT_TYPE.FOOTNOTE
++		);
++
++		this.isEnabled = allowedIn !== null;
++	}
++}
+diff --git a/node_modules/@ckeditor/strapi-plugin-ckeditor/admin/src/components/CKEditorInput/plugins/footnote/utils.js b/node_modules/@ckeditor/strapi-plugin-ckeditor/admin/src/components/CKEditorInput/plugins/footnote/utils.js
+new file mode 100644
+index 0000000..f3e894a
+--- /dev/null
++++ b/node_modules/@ckeditor/strapi-plugin-ckeditor/admin/src/components/CKEditorInput/plugins/footnote/utils.js
+@@ -0,0 +1,211 @@
++import * as uuid from 'uuid';
++import {
++	ELEMENT_TYPE,
++	FOOTNOTE_ATTRIBUTE,
++	FOOTNOTE_CLASS,
++	FOOTNOTE_DOM_ATTRIBUTE,
++} from './constants';
++
++export const findNodes = function (writer, name, root) {
++	const nodes = [];
++	const range = writer.createRangeIn(root);
++
++	for (const value of range.getWalker({ ignoreElementEnd: true })) {
++		const node = value.item;
++
++		if (node.name === name) {
++			nodes.push(node);
++		}
++	}
++
++	return nodes;
++};
++
++export const findChildrenByName = function (parent, name) {
++	const children = Array.from(parent.getChildren());
++	const child = children.filter((child) => child.name === name);
++	return child;
++};
++
++export const findChildByName = function (parent, name) {
++	const children = Array.from(parent.getChildren());
++	const child = children.find((child) => child.name === name);
++	return child;
++};
++
++export const createFootnoteView = function (modelElement, viewWriter) {
++	const id = modelElement.getAttribute(FOOTNOTE_ATTRIBUTE.ID);
++	const index = modelElement.getAttribute(FOOTNOTE_ATTRIBUTE.INDEX);
++	const content = modelElement.getAttribute(FOOTNOTE_ATTRIBUTE.CONTENT);
++	const sup = viewWriter.createContainerElement('sup', {
++		class: ELEMENT_TYPE.FOOTNOTE,
++		[FOOTNOTE_DOM_ATTRIBUTE.ID]: id,
++		[FOOTNOTE_DOM_ATTRIBUTE.INDEX]: index,
++		[FOOTNOTE_DOM_ATTRIBUTE.CONTENT]: content,
++	});
++
++	viewWriter.setCustomProperty(ELEMENT_TYPE.FOOTNOTE, true, sup);
++	viewWriter.insert(
++		viewWriter.createPositionAt(sup, 0),
++		viewWriter.createText(`[${index}]`)
++	);
++
++	return sup;
++};
++
++export const createFootnoteModel = function (viewElement, modelWriter) {
++	const id = viewElement.getAttribute(FOOTNOTE_DOM_ATTRIBUTE.ID);
++	const number = viewElement.getAttribute(FOOTNOTE_DOM_ATTRIBUTE.INDEX);
++	const content = viewElement.getAttribute(FOOTNOTE_DOM_ATTRIBUTE.CONTENT);
++
++	return modelWriter.createElement(ELEMENT_TYPE.FOOTNOTE, {
++		id,
++		number,
++		content,
++	});
++};
++
++export const createFootnoteEditorView = function (modelElement, viewWriter) {
++	const div = viewWriter.createEditableElement('div', {
++		class: FOOTNOTE_CLASS.EDITOR,
++		[FOOTNOTE_DOM_ATTRIBUTE.ID]: modelElement.getAttribute(
++			FOOTNOTE_ATTRIBUTE.ID
++		),
++		[FOOTNOTE_DOM_ATTRIBUTE.INDEX]: modelElement.getAttribute(
++			FOOTNOTE_ATTRIBUTE.INDEX
++		),
++		[FOOTNOTE_DOM_ATTRIBUTE.CONTENT]: modelElement.getAttribute(
++			FOOTNOTE_ATTRIBUTE.CONTENT
++		),
++	});
++	viewWriter.setCustomProperty(ELEMENT_TYPE.EDITOR, true, div);
++
++	return div;
++};
++
++export const createFootnoteEditorModel = function (viewElement, modelWriter) {
++	const id = viewElement.getAttribute(FOOTNOTE_DOM_ATTRIBUTE.ID);
++	const index = viewElement.getAttribute(FOOTNOTE_DOM_ATTRIBUTE.INDEX);
++	const content = viewElement.getAttribute(FOOTNOTE_DOM_ATTRIBUTE.CONTENT);
++
++	return modelWriter.createElement(ELEMENT_TYPE.EDITOR, {
++		[FOOTNOTE_ATTRIBUTE.ID]: id,
++		[FOOTNOTE_ATTRIBUTE.INDEX]: index,
++		[FOOTNOTE_ATTRIBUTE.CONTENT]: content,
++	});
++};
++
++export const storeFootnoteContent = function (editor) {
++	const currentNode =
++		editor.model.document.selection.getFirstPosition()?.parent;
++
++	if (!currentNode || currentNode.name !== ELEMENT_TYPE.EDITOR) return;
++
++	const id = currentNode.getAttribute(FOOTNOTE_ATTRIBUTE.ID);
++
++	const content = editor.data.htmlProcessor.toData(
++		editor.data.toView(currentNode)
++	);
++
++	editor.model.change((writer) => {
++		const footnotes = findNodes(
++			writer,
++			ELEMENT_TYPE.FOOTNOTE,
++			editor.model.document.getRoot()
++		);
++
++		const footnote = footnotes.find(
++			(footnote) => footnote.getAttribute(FOOTNOTE_ATTRIBUTE.ID) === id
++		);
++
++		if (!footnote) return;
++
++		writer.setAttribute(FOOTNOTE_ATTRIBUTE.CONTENT, content, footnote);
++	});
++};
++
++export const loadFootnoteContent = function (editor, writer, footnote, index) {
++	const id = footnote.getAttribute(FOOTNOTE_ATTRIBUTE.ID);
++	const content = footnote.getAttribute(FOOTNOTE_ATTRIBUTE.CONTENT);
++
++	const editorBlock = writer.createElement(ELEMENT_TYPE.EDITOR, {
++		[FOOTNOTE_ATTRIBUTE.ID]: id,
++		[FOOTNOTE_ATTRIBUTE.CONTENT]: content,
++		[FOOTNOTE_ATTRIBUTE.INDEX]: `${index + 1}`,
++	});
++
++	const viewFragment = editor.data.processor.toView(content);
++	const modelFragment = editor.data.toModel(viewFragment);
++
++	Array.from(modelFragment.getChild(0)?.getChildren?.() || []).forEach(
++		(child) => {
++			writer.append(child, editorBlock);
++		}
++	);
++
++	return editorBlock;
++};
++
++export const refreshFootnoteIndex = function (editor, old) {
++	let footnotes = [];
++
++	editor.model.change((writer) => {
++		const root = editor.model.document.getRoot();
++		footnotes = findNodes(writer, ELEMENT_TYPE.FOOTNOTE, root);
++
++		for (let i = 0; i < footnotes.length; i++) {
++			const footnote = footnotes[i];
++			const n = i + 1;
++
++			if (footnote.getAttribute(FOOTNOTE_ATTRIBUTE.INDEX) !== n.toString()) {
++				const id = footnote.getAttribute(FOOTNOTE_ATTRIBUTE.ID);
++				writer.setAttribute(FOOTNOTE_ATTRIBUTE.INDEX, n.toString(), footnote);
++				writer.setAttribute(
++					FOOTNOTE_ATTRIBUTE.ID,
++					uuid.validate(id) ? id : uuid.v4(),
++					footnote
++				);
++			}
++		}
++	});
++
++	if (
++		old.length !== footnotes.length ||
++		footnotes.some((footnote, index) => footnote !== old[index])
++	)
++		return footnotes;
++
++	return null;
++};
++
++export const getFootnoteContainer = function (editor) {
++	const root = editor.model.document.getRoot();
++
++	const containers = findChildrenByName(root, ELEMENT_TYPE.CONTAINER);
++
++	if (containers.length > 1) {
++		editor.model.change((writer) => {
++			for (let i = 1; i < containers.length; i++) {
++				writer.remove(containers[i]);
++			}
++		});
++	}
++
++	let container = containers[0];
++
++	if (!container) {
++		editor.model.change((writer) => {
++			container = writer.createElement(ELEMENT_TYPE.CONTAINER);
++
++			editor.model.insertContent(
++				container,
++				writer.createPositionAt(
++					editor.model.document.getRoot(),
++					editor.model.document.getRoot().maxOffset
++				)
++			);
++		});
++	}
++
++	return container;
++};
+diff --git a/node_modules/@ckeditor/strapi-plugin-ckeditor/admin/src/components/CKEditorInput/styles/common.js b/node_modules/@ckeditor/strapi-plugin-ckeditor/admin/src/components/CKEditorInput/styles/common.js
+index b9db460..30b968a 100644
+--- a/node_modules/@ckeditor/strapi-plugin-ckeditor/admin/src/components/CKEditorInput/styles/common.js
++++ b/node_modules/@ckeditor/strapi-plugin-ckeditor/admin/src/components/CKEditorInput/styles/common.js
+@@ -111,4 +111,36 @@ export const style = css`
+       }
+     }
+   }
++
++  .footnotes-container {
++    outline: none !important;
++    transition: 0 !important;
++  }
++
++  .footnotes-container div.ck {
++    display: none !important;
++  }
++
++  .footnotes-container:hover {
++    outline: none !important;
++  }
++
++  .footnote-editor {
++    margin-top: 0.2rem;
++    font-size: 0.8rem;
++  }
++
++  .footnote-editor::before {
++    content: attr(data-index) '.';
++    font-size: 0.8rem;
++    margin-right: 0.2rem;
++  }
++
++  .footnote-editor,
++  .footnote-editor:focus,
++  .footnote-editor.ck-editor__nested-editable:focus {
++    outline: none !important;
++    box-shadow: none !important;
++    border: 0px !important;
++  }
+ `;

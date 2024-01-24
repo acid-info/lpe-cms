@@ -28,6 +28,22 @@ index 73ea2b9..aaead3e 100644
          '|',
          'link', 'strapiMediaLib', 'mediaEmbed', 'blockQuote', 'insertTable', 'codeBlock',
          '|',
+diff --git a/node_modules/@ckeditor/strapi-plugin-ckeditor/admin/src/components/CKEditorInput/index.js b/node_modules/@ckeditor/strapi-plugin-ckeditor/admin/src/components/CKEditorInput/index.js
+index e6e1ee3..186b41c 100644
+--- a/node_modules/@ckeditor/strapi-plugin-ckeditor/admin/src/components/CKEditorInput/index.js
++++ b/node_modules/@ckeditor/strapi-plugin-ckeditor/admin/src/components/CKEditorInput/index.js
+@@ -48,8 +48,10 @@ const CKEditorInput = ({
+       if ( asset.mime.includes('image') ) {
+         const url = sanitize( asset.url );
+         const alt = sanitize( asset.alt );
++        const width = asset.width
++        const height = asset.height
+ 
+-        imageHtmlString += `<img src="${ url }" alt="${ alt }" />`;
++        imageHtmlString += `<img src="${ url }" alt="${ alt }" width="${width}" height="${height}" />`;
+       }
+     } );
+ 
 diff --git a/node_modules/@ckeditor/strapi-plugin-ckeditor/admin/src/components/CKEditorInput/plugins/footnote/constants.js b/node_modules/@ckeditor/strapi-plugin-ckeditor/admin/src/components/CKEditorInput/plugins/footnote/constants.js
 new file mode 100644
 index 0000000..416ff9e
@@ -756,3 +772,16 @@ index b9db460..30b968a 100644
 +    border: 0px !important;
 +  }
  `;
+diff --git a/node_modules/@ckeditor/strapi-plugin-ckeditor/admin/src/components/MediaLib/index.js b/node_modules/@ckeditor/strapi-plugin-ckeditor/admin/src/components/MediaLib/index.js
+index f93afa6..94d177a 100644
+--- a/node_modules/@ckeditor/strapi-plugin-ckeditor/admin/src/components/MediaLib/index.js
++++ b/node_modules/@ckeditor/strapi-plugin-ckeditor/admin/src/components/MediaLib/index.js
+@@ -11,6 +11,8 @@ const MediaLib = ( { isOpen, onChange, onToggle } ) => {
+       alt: f.alternativeText || f.name,
+       url: prefixFileUrlWithBackendUrl( f.url ),
+       mime: f.mime,
++      width: f.width,
++      height: f.height
+     } ) );
+ 
+     onChange( formattedFiles );

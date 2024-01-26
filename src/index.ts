@@ -1,5 +1,5 @@
 import { Strapi } from "@strapi/strapi";
-import { registerGraphqlSearch } from "./extensions/search";
+import { searchExtension } from "./extensions/search";
 
 export default {
   /**
@@ -9,7 +9,7 @@ export default {
    * This gives you an opportunity to extend code.
    */
   async register({ strapi }) {
-    await registerGraphqlSearch(strapi);
+    await searchExtension.register({ strapi });
   },
 
   /**
@@ -20,6 +20,6 @@ export default {
    * run jobs, or perform some special logic.
    */
   async bootstrap({ strapi }: { strapi: Strapi }) {
-    await strapi.db.connection.raw("CREATE EXTENSION IF NOT EXISTS pg_trgm;");
+    await searchExtension.bootstrap({ strapi });
   },
 };

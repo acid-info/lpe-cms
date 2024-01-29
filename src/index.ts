@@ -1,4 +1,5 @@
 import { Strapi } from "@strapi/strapi";
+import { discordNotificationExtension } from "./extensions/discord-notification";
 import { searchExtension } from "./extensions/search";
 
 export default {
@@ -10,6 +11,7 @@ export default {
    */
   async register({ strapi }) {
     await searchExtension.register({ strapi });
+    await discordNotificationExtension.register({ strapi });
   },
 
   /**
@@ -21,5 +23,6 @@ export default {
    */
   async bootstrap({ strapi }: { strapi: Strapi }) {
     await searchExtension.bootstrap({ strapi });
+    await discordNotificationExtension.bootstrap({ strapi });
   },
 };

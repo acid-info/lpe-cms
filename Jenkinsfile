@@ -63,13 +63,15 @@ pipeline {
       } }
     }
   }
-
-
-def getDefaultImageTag(currentValue) {
-  switch (env.JOB_BASE_NAME) {
-    case 'docker-latest':  return 'latest'
-    case 'docker-release': return 'stable'
-    case 'docker-manual':  return ''
-    default:               return currentValue
-  }
+  post {
+      always { cleanWs()}
+    }
 }
+  def getDefaultImageTag(currentValue) {
+    switch (env.JOB_BASE_NAME) {
+      case 'docker-latest':  return 'latest'
+      case 'docker-release': return 'stable'
+      case 'docker-manual':  return ''
+      default:               return currentValue
+    }
+  }

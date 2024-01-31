@@ -29,18 +29,25 @@ index 73ea2b9..aaead3e 100644
          'link', 'strapiMediaLib', 'mediaEmbed', 'blockQuote', 'insertTable', 'codeBlock',
          '|',
 diff --git a/node_modules/@ckeditor/strapi-plugin-ckeditor/admin/src/components/CKEditorInput/index.js b/node_modules/@ckeditor/strapi-plugin-ckeditor/admin/src/components/CKEditorInput/index.js
-index e6e1ee3..186b41c 100644
+index e6e1ee3..9059c84 100644
 --- a/node_modules/@ckeditor/strapi-plugin-ckeditor/admin/src/components/CKEditorInput/index.js
 +++ b/node_modules/@ckeditor/strapi-plugin-ckeditor/admin/src/components/CKEditorInput/index.js
-@@ -48,8 +48,10 @@ const CKEditorInput = ({
+@@ -48,8 +48,17 @@ const CKEditorInput = ({
        if ( asset.mime.includes('image') ) {
          const url = sanitize( asset.url );
          const alt = sanitize( asset.alt );
 +        const width = asset.width
 +        const height = asset.height
++        const caption = sanitize(asset.caption || '');
  
 -        imageHtmlString += `<img src="${ url }" alt="${ alt }" />`;
-+        imageHtmlString += `<img src="${ url }" alt="${ alt }" width="${width}" height="${height}" />`;
++        const imgTag = `<img src="${ url }" alt="${ alt }" width="${width}" height="${height}" />`
++
++        if(caption && caption.length > 0) {
++          imageHtmlString += `<figure class="image">${imgTag}<figcaption>${caption}</figcaption></figure>`;
++        } else {
++          imageHtmlString += imgTag;
++        }
        }
      } );
  
@@ -773,15 +780,16 @@ index b9db460..30b968a 100644
 +  }
  `;
 diff --git a/node_modules/@ckeditor/strapi-plugin-ckeditor/admin/src/components/MediaLib/index.js b/node_modules/@ckeditor/strapi-plugin-ckeditor/admin/src/components/MediaLib/index.js
-index f93afa6..94d177a 100644
+index f93afa6..1ed564e 100644
 --- a/node_modules/@ckeditor/strapi-plugin-ckeditor/admin/src/components/MediaLib/index.js
 +++ b/node_modules/@ckeditor/strapi-plugin-ckeditor/admin/src/components/MediaLib/index.js
-@@ -11,6 +11,8 @@ const MediaLib = ( { isOpen, onChange, onToggle } ) => {
+@@ -11,6 +11,9 @@ const MediaLib = ( { isOpen, onChange, onToggle } ) => {
        alt: f.alternativeText || f.name,
        url: prefixFileUrlWithBackendUrl( f.url ),
        mime: f.mime,
 +      width: f.width,
-+      height: f.height
++      height: f.height,
++      caption: f.caption || '',
      } ) );
  
      onChange( formattedFiles );

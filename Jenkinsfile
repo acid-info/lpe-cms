@@ -42,14 +42,13 @@ pipeline {
     stage('Build') {
       steps { script {
         image = docker.build(
-          "${params.IMAGE_NAME}:${params.IMAGE_TAG ?: GIT_COMMIT.take(8)}",
+          "${params.IMAGE_NAME}:${params.IMAGE_TAG ?: GIT_REF}",
           "--build-arg='GIT_COMMIT=${GIT_COMMIT.take(8)}' ."
         )
       } }
     }
 
     stage('Push') {
-      when { expression { params.IMAGE_TAG != '' } }
       steps { script {
         withDockerRegistry([
           credentialsId: params.DOCKER_CRED, url: params.DOCKER_REGISTRY_URL

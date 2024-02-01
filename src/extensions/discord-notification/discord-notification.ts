@@ -55,7 +55,7 @@ export class DiscordNotification {
     });
 
     this.config.dataTypes.forEach((dataType) => {
-      this.register(dataType);
+      if (dataType.enabled) this.register(dataType);
     });
   };
 

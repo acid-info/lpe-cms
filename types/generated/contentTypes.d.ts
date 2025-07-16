@@ -947,6 +947,7 @@ export interface ApiPostPost extends Schema.CollectionType {
       'oneToMany',
       'api::post.post'
     >;
+    discourse_topic_id: Attribute.Integer;
     createdAt: Attribute.DateTime;
     updatedAt: Attribute.DateTime;
     publishedAt: Attribute.DateTime;

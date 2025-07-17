@@ -35,7 +35,7 @@
     "patch-package": "^8.0.0"
   },
   "engines": {
-    "node": ">=18.0.0 <=20.x.x",
+    "node": ">=20.0.0",
     "npm": ">=6.0.0"
   },
   "strapi": {

@@ -920,6 +920,9 @@ export interface ApiPostPost extends Schema.CollectionType {
           preset: 'standard';
         }
       >;
+    blocks: Attribute.DynamicZone<
+      ['blocks.rich-text', 'blocks.code-block', 'blocks.interactive-embed']
+    >;
     authors: Attribute.Relation<
       'api::post.post',
       'oneToMany',

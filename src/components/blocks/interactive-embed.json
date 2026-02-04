@@ -1,0 +1,27 @@
+{
+  "collectionName": "components_blocks_interactive_embeds",
+  "info": {
+    "displayName": "Interactive Embed",
+    "description": ""
+  },
+  "attributes": {
+    "title": {
+      "type": "string"
+    },
+    "full_html": {
+      "type": "text"
+    },
+    "html": {
+      "type": "text"
+    },
+    "css": {
+      "type": "text"
+    },
+    "js": {
+      "type": "text"
+    },
+    "height": {
+      "type": "integer"
+    }
+  }
+}

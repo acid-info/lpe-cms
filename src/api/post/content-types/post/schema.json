@@ -52,6 +52,14 @@
       },
       "customField": "plugin::ckeditor.CKEditor"
     },
+    "blocks": {
+      "type": "dynamiczone",
+      "components": [
+        "blocks.rich-text",
+        "blocks.code-block",
+        "blocks.interactive-embed"
+      ]
+    },
     "authors": {
       "type": "relation",
       "relation": "oneToMany",

@@ -1,0 +1,15 @@
+{
+  "collectionName": "components_blocks_code_blocks",
+  "info": {
+    "displayName": "Code Block",
+    "description": ""
+  },
+  "attributes": {
+    "language": {
+      "type": "string"
+    },
+    "code": {
+      "type": "text"
+    }
+  }
+}

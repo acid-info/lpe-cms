@@ -923,6 +923,7 @@ export interface ApiPostPost extends Schema.CollectionType {
     blocks: Attribute.DynamicZone<
       ['blocks.rich-text', 'blocks.code-block', 'blocks.interactive-embed']
     >;
+    html_file: Attribute.Media;
     authors: Attribute.Relation<
       'api::post.post',
       'oneToMany',

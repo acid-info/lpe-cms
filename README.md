@@ -1,9 +1,9 @@
 # cms-press.logos.co
 
-Requires Node 20, as Strapi v5 depends on it.
+Requires Node 20, as Strapi v4 depends on it.
 
 ```bash
-cp .env
+cp .env.example .env
 ```
 
 ### `develop`

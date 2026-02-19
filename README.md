@@ -6,6 +6,21 @@ Requires Node 20, as Strapi v4 depends on it.
 cp .env.example .env
 ```
 
+## Environment variables
+
+After copying `.env.example` to `.env`, update the variables to match your local or production database configuration.
+
+| Variable             | Description                                      | Example                         | Required | Notes                                           |
+| -------------------- | ------------------------------------------------ | -------------------------------- | -------- | ----------------------------------------------- |
+| `DATABASE_CLIENT`    | Database client/driver used by Strapi           | `postgres`, `mysql`, `sqlite`   | Yes      | Use `sqlite` for simple local dev if supported. |
+| `DATABASE_HOST`      | Database server host                            | `localhost`, `db.example.com`   | Yes      | For Docker, this may be the service name.       |
+| `DATABASE_PORT`      | Port on which the database listens              | `5432`, `3306`                  | Yes      | Must match your database configuration.         |
+| `DATABASE_NAME`      | Name of the application database                | `cms_press`                     | Yes      | Create this DB before running migrations.       |
+| `DATABASE_USERNAME`  | Database user with access to `DATABASE_NAME`    | `cms_user`                      | Yes      | Should have permission to create/alter tables.  |
+| `DATABASE_PASSWORD`  | Password for `DATABASE_USERNAME`                | `super-secure-password`         | Yes      | Use a strong secret in production.              |
+| `DATABASE_SSL`       | Whether SSL is required for DB connections      | `false` (local), `true` (prod)  | Optional | Typically `false` for local dev, `true` in prod |
+
+For local development, you can usually point to a local database instance (e.g., `localhost` with `DATABASE_SSL=false`). In production, you should use your managed database host, secure credentials, and enable SSL if your provider requires it.
 ### `develop`
 
 Start your Strapi application with autoReload enabled. [Learn more](https://docs.strapi.io/dev-docs/cli#strapi-develop)

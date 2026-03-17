@@ -119,6 +119,9 @@
     },
     "discourse_topic_id": {
       "type": "integer"
+    },
+    "markdown_body": {
+      "type": "text"
     }
   }
 }

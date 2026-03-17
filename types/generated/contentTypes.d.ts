@@ -952,6 +952,7 @@ export interface ApiPostPost extends Schema.CollectionType {
       'api::post.post'
     >;
     discourse_topic_id: Attribute.Integer;
+    markdown_body: Attribute.Text;
     createdAt: Attribute.DateTime;
     updatedAt: Attribute.DateTime;
     publishedAt: Attribute.DateTime;

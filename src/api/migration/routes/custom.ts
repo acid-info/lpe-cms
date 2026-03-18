@@ -5,6 +5,7 @@ export default {
       path: "/migrations/ghost",
       handler: "migration.runGhost",
       config: {
+        auth: false,
         policies: [],
       },
     },

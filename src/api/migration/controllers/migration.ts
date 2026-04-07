@@ -23,7 +23,12 @@ export default {
 
     const modeRaw = String(ctx.query?.mode || "all");
     const mode =
-      modeRaw === "posts" || modeRaw === "images" || modeRaw === "all"
+      modeRaw === "posts" ||
+      modeRaw === "images" ||
+      modeRaw === "all" ||
+      modeRaw === "repair" ||
+      modeRaw === "scan" ||
+      modeRaw === "rehydrate"
         ? modeRaw
         : "all";
 

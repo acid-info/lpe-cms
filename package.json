@@ -12,7 +12,8 @@
     "develop": "strapi develop",
     "postinstall": "patch-package",
     "start": "strapi start",
-    "strapi": "strapi"
+    "strapi": "strapi",
+    "backfill:og": "npx ts-node --transpile-only scripts/backfill-og-images.ts"
   },
   "dependencies": {
     "@ckeditor/strapi-plugin-ckeditor": "^0.0.10",

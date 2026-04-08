@@ -1,42 +1,10 @@
-/**
- * og-image service
- *
- * Generates and stores a pre-rendered Open Graph image for a post by
- * calling the Next.js frontend's /api/og endpoint (which uses
- * @vercel/og + sharp to produce a compact JPEG) and uploading the
- * result into Strapi's media library, then attaching it to the post's
- * `og_image` field.
- *
- * Why pre-generate?
- *   X (Twitterbot) frequently fails to fetch the dynamic /api/og route
- *   because of cold start + WASM init + remote cover_image fetch time
- *   budgets. Storing a static JPEG in the CMS bypasses all of that.
- *
- * The og URL shape MUST match press.logos.co/src/utils/og.utils.ts
- * (source of truth). Keep these two files in sync.
- */
-
 import fs from "fs/promises";
 import os from "os";
 import path from "path";
 
-/**
- * Infrastructure URLs.
- *
- * The production deployment does not support adding new environment
- * variables, so the defaults are hardcoded production URLs. The service
- * still honors env overrides when present — this exists purely so that
- * `yarn develop` locally can point at a dev Next.js (e.g. localhost:3000)
- * and a dev Strapi (e.g. localhost:1337) without any code change. In
- * production no env vars are set, the hardcoded defaults are used, and
- * behavior is identical to the fully hardcoded version.
- *
- * Both production URLs are mirrored in the frontend allowlist
- * (press.logos.co/src/pages/api/og.tsx ALLOWED_IMAGE_HOSTS). If either
- * domain moves, update this file AND the frontend allowlist together.
- */
 const FRONTEND_BASE_URL =
   process.env.OG_FRONTEND_URL || "https://press.logos.co";
+
 const CMS_PUBLIC_URL =
   process.env.OG_CMS_PUBLIC_URL || "https://cms-press.logos.co";
 
@@ -94,9 +62,7 @@ function toAbsoluteCoverImage(url: string | null | undefined): string | null {
   return new URL(url, CMS_PUBLIC_URL).toString();
 }
 
-function mapContentType(
-  postType: string | null | undefined
-): string | null {
+function mapContentType(postType: string | null | undefined): string | null {
   // Frontend uses lower-case ids: 'article', 'podcast', 'episode'.
   // Strapi post.type enum is ['Article', 'Episode'].
   if (!postType) return null;
@@ -191,7 +157,10 @@ async function uploadJpegToStrapi(params: {
 
 async function deleteStrapiFile(id: number): Promise<void> {
   try {
-    const existing = await strapi.plugin("upload").service("upload").findOne(id);
+    const existing = await strapi
+      .plugin("upload")
+      .service("upload")
+      .findOne(id);
     if (existing) {
       await strapi.plugin("upload").service("upload").remove(existing);
     }
@@ -205,27 +174,9 @@ async function deleteStrapiFile(id: number): Promise<void> {
 }
 
 export interface GenerateOptions {
-  /**
-   * When true, removes the previously attached og_image file after
-   * successfully attaching the new one. Keeps the media library tidy.
-   */
   replacePrevious?: boolean;
 }
 
-/**
- * Generate a pre-rendered OG image JPEG for the given post and attach
- * it to the post's og_image field.
- *
- * This function ALWAYS regenerates — it does not skip based on the
- * presence of an existing og_image. Callers are responsible for deciding
- * whether regeneration is needed:
- *   - Lifecycle hooks call this when an invalidating field changed.
- *   - The backfill script filters out posts that already have an og_image
- *     (unless run with --force).
- *
- * Errors are thrown. Callers should wrap in try/catch so a failure
- * never blocks the underlying save operation.
- */
 export async function generateOgImageForPost(
   postId: number,
   options: GenerateOptions = {}
@@ -271,21 +222,6 @@ export async function generateOgImageForPost(
   const previousId = post.og_image?.id ?? null;
   const { id: fileId } = await uploadJpegToStrapi({ buffer, fileName });
 
-  // Persist the og_image relation.
-  //
-  // IMPORTANT: `strapi.db.query(...).update()` does NOT bypass lifecycle
-  // hooks — it re-invokes `beforeUpdate`/`afterUpdate` via
-  // `db.lifecycles.run(...)` (verified in
-  // node_modules/@strapi/database/dist/index.js update(...)). Recursion
-  // is instead prevented by the content-type lifecycle hook in
-  // ../content-types/post/lifecycles.ts, which returns early when the
-  // only key in `event.params.data` is `og_image`. That guard relies on
-  // this service passing EXACTLY `{ og_image: fileId }` — do not add
-  // sibling fields to the update payload here.
-  //
-  // The query engine's `updateRelations` correctly writes to the media
-  // morph table (files_related_morphs) for morphOne attributes, so a
-  // plain numeric fileId is all that is needed.
   await strapi.db.query("api::post.post").update({
     where: { id: post.id },
     data: { og_image: fileId },

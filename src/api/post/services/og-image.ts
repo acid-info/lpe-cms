@@ -88,15 +88,28 @@ function toIsoDate(v: string | Date | null | undefined): string | null {
   }
 }
 
+const FETCH_TIMEOUT_MS = 30_000;
+
 async function fetchOgJpeg(ogUrl: string): Promise<Buffer> {
-  const res = await fetch(ogUrl);
-  if (!res.ok) {
-    throw new Error(
-      `[og-image] Upstream /api/og responded ${res.status} ${res.statusText}`
-    );
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  try {
+    const res = await fetch(ogUrl, { signal: controller.signal });
+    if (!res.ok) {
+      throw new Error(
+        `[og-image] Upstream /api/og responded ${res.status} ${res.statusText}`
+      );
+    }
+    const ab = await res.arrayBuffer();
+    return Buffer.from(ab);
+  } catch (e) {
+    if ((e as Error).name === "AbortError") {
+      throw new Error(`[og-image] Upstream /api/og timed out after ${FETCH_TIMEOUT_MS}ms`);
+    }
+    throw e;
+  } finally {
+    clearTimeout(timer);
   }
-  const ab = await res.arrayBuffer();
-  return Buffer.from(ab);
 }
 
 async function getOrCreateOgFolder(): Promise<number | null> {

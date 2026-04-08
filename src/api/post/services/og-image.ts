@@ -99,9 +99,30 @@ async function fetchOgJpeg(ogUrl: string): Promise<Buffer> {
   return Buffer.from(ab);
 }
 
+async function getOrCreateOgFolder(): Promise<number | null> {
+  try {
+    const existing = await strapi.db
+      .query("plugin::upload.folder")
+      .findOne({ where: { name: "thumbnails", parent: null } });
+    if (existing) return existing.id as number;
+
+    const created = await strapi
+      .plugin("upload")
+      .service("folder")
+      .create({ name: "thumbnails", parent: null });
+    return created.id as number;
+  } catch (e) {
+    strapi.log.warn(
+      `[og-image] Could not get/create thumbnails folder: ${(e as Error).message}. Uploading to root.`
+    );
+    return null;
+  }
+}
+
 async function uploadJpegToStrapi(params: {
   buffer: Buffer;
   fileName: string;
+  folderId?: number | null;
 }): Promise<{ id: number }> {
   const { buffer, fileName } = params;
 
@@ -123,7 +144,7 @@ async function uploadJpegToStrapi(params: {
     os.tmpdir(),
     `${Date.now()}-${Math.random().toString(36).slice(2)}-${fileName}`
   );
-  await fs.writeFile(tmpPath, buffer);
+  await fs.writeFile(tmpPath, buffer as unknown as Uint8Array);
 
   try {
     const uploaded = await strapi
@@ -135,6 +156,7 @@ async function uploadJpegToStrapi(params: {
             name: fileName,
             alternativeText: fileName,
             caption: "",
+            ...(params.folderId != null ? { folder: params.folderId } : {}),
           },
         },
         files: {
@@ -220,7 +242,8 @@ export async function generateOgImageForPost(
   const fileName = `og-${post.slug || post.id}.jpg`;
 
   const previousId = post.og_image?.id ?? null;
-  const { id: fileId } = await uploadJpegToStrapi({ buffer, fileName });
+  const folderId = await getOrCreateOgFolder();
+  const { id: fileId } = await uploadJpegToStrapi({ buffer, fileName, folderId });
 
   await strapi.db.query("api::post.post").update({
     where: { id: post.id },

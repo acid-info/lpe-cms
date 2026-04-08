@@ -68,6 +68,20 @@ export default {
     const keys = Object.keys(data);
     if (keys.length === 1 && keys[0] === "og_image") return;
 
+    const isPublishTransition =
+      "publishedAt" in data && data.publishedAt != null;
+    if (isPublishTransition) {
+      const post = (await strapi.entityService.findOne(
+        "api::post.post",
+        result.id,
+        { populate: { og_image: true } }
+      )) as { og_image?: { id: number } | null } | null;
+      if (!post?.og_image) {
+        scheduleOgGeneration(result.id, "afterUpdate:publish");
+        return;
+      }
+    }
+
     if (!didInvalidatingFieldChange(data)) return;
     scheduleOgGeneration(result.id, "afterUpdate");
   },

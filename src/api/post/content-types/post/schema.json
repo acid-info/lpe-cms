@@ -93,7 +93,12 @@
       "required": false,
       "allowedTypes": [
         "images"
-      ]
+      ],
+      "pluginOptions": {
+        "content-manager": {
+          "visible": false
+        }
+      }
     },
     "tags": {
       "type": "relation",

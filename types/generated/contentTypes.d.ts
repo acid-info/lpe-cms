@@ -935,7 +935,12 @@ export interface ApiPostPost extends Schema.CollectionType {
       'api::podcast-show.podcast-show'
     >;
     cover_image: Attribute.Media;
-    og_image: Attribute.Media;
+    og_image: Attribute.Media &
+      Attribute.SetPluginOptions<{
+        'content-manager': {
+          visible: false;
+        };
+      }>;
     tags: Attribute.Relation<'api::post.post', 'manyToMany', 'api::tag.tag'>;
     channel: Attribute.Component<'cat.channel', true>;
     credits: Attribute.RichText &

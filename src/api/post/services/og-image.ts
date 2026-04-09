@@ -30,6 +30,7 @@ function buildOgUrl(params: {
   frontendBase: string;
   title?: string | null;
   imageUrl?: string | null;
+  imagePath?: string | null;
   contentType?: string | null;
   date?: string | null;
   pagePath?: string | null;
@@ -41,6 +42,7 @@ function buildOgUrl(params: {
   const searchParams = new URLSearchParams();
   if (params.title) searchParams.set("title", params.title);
   if (params.imageUrl) searchParams.set("image", params.imageUrl);
+  if (params.imagePath) searchParams.set("imagePath", params.imagePath);
   if (params.contentType) searchParams.set("contentType", params.contentType);
   if (params.date) searchParams.set("date", params.date);
   if (params.pagePath) searchParams.set("pagePath", params.pagePath);
@@ -60,6 +62,22 @@ function toAbsoluteCoverImage(url: string | null | undefined): string | null {
   // The Next.js /api/og endpoint requires an absolute URL on an allowlisted
   // host, so rewrite to the public CMS origin here.
   return new URL(url, CMS_PUBLIC_URL).toString();
+}
+
+function toCoverImagePath(url: string | null | undefined): string | null {
+  if (!url) return null;
+  if (url.startsWith("/uploads/")) return url;
+
+  try {
+    const parsed = new URL(url);
+    if (parsed.pathname.startsWith("/uploads/")) {
+      return parsed.pathname;
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
 }
 
 function mapContentType(postType: string | null | undefined): string | null {
@@ -241,6 +259,7 @@ export async function generateOgImageForPost(
     frontendBase: FRONTEND_BASE_URL,
     title: post.title,
     imageUrl: toAbsoluteCoverImage(post.cover_image?.url),
+    imagePath: toCoverImagePath(post.cover_image?.url),
     contentType,
     date,
     pagePath,

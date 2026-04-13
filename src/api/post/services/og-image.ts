@@ -122,7 +122,9 @@ async function fetchOgJpeg(ogUrl: string): Promise<Buffer> {
     return Buffer.from(ab);
   } catch (e) {
     if ((e as Error).name === "AbortError") {
-      throw new Error(`[og-image] Upstream /api/og timed out after ${FETCH_TIMEOUT_MS}ms`);
+      throw new Error(
+        `[og-image] Upstream /api/og timed out after ${FETCH_TIMEOUT_MS}ms`
+      );
     }
     throw e;
   } finally {
@@ -144,7 +146,9 @@ async function getOrCreateOgFolder(): Promise<number | null> {
     return created.id as number;
   } catch (e) {
     strapi.log.warn(
-      `[og-image] Could not get/create thumbnails folder: ${(e as Error).message}. Uploading to root.`
+      `[og-image] Could not get/create thumbnails folder: ${
+        (e as Error).message
+      }. Uploading to root.`
     );
     return null;
   }
@@ -275,15 +279,27 @@ export async function generateOgImageForPost(
 
   const previousId = post.og_image?.id ?? null;
   const folderId = await getOrCreateOgFolder();
-  const { id: fileId } = await uploadJpegToStrapi({ buffer, fileName, folderId });
+  const { id: fileId } = await uploadJpegToStrapi({
+    buffer,
+    fileName,
+    folderId,
+  });
 
   await strapi.db.query("api::post.post").update({
     where: { id: post.id },
     data: { og_image: fileId },
   });
 
+  // Delete the previous og_image if it's different from the new one.
   if (options.replacePrevious && previousId && previousId !== fileId) {
     await deleteStrapiFile(previousId);
+  }
+
+  const orphans = (await strapi.db.query("plugin::upload.file").findMany({
+    where: { name: fileName, id: { $ne: fileId } },
+  })) as Array<{ id: number }>;
+  for (const orphan of orphans) {
+    await deleteStrapiFile(orphan.id);
   }
 
   strapi.log.info(

@@ -154,27 +154,33 @@ async function getOrCreateOgFolder(): Promise<number | null> {
   }
 }
 
-async function uploadJpegToStrapi(params: {
-  buffer: Buffer;
-  fileName: string;
-  folderId?: number | null;
-}): Promise<{ id: number }> {
-  const { buffer, fileName } = params;
-
-  // Strapi v4.16 upload service consumes formidable-v1 shaped file
-  // objects (verified against
-  // node_modules/@strapi/plugin-upload/server/services/upload.js
-  // `enhanceAndValidateFile`):
-  //   file.name   → used as filename for extension + slug
-  //   file.type   → used as mime
-  //   file.size   → used for size-in-KB
-  //   file.path   → opened via fs.createReadStream
-  // Using modern `originalFilename`/`mimetype`/`filepath` WOULD silently
-  // produce undefined and crash inside path.extname. Keep this shape.
-  //
-  // The upload service also mutates the file object to attach
-  // `tmpWorkingDirectory`, and rimrafs that directory at the end — it is
-  // NOT the same as our temp file, so our cleanup below is still needed.
+/**
+ * Strapi v4.16 upload service consumes formidable-v1 shaped file objects
+ * (verified against
+ * node_modules/@strapi/plugin-upload/server/services/upload.js
+ * `enhanceAndValidateFile`):
+ *   file.name → filename used for extension + slug
+ *   file.type → mime
+ *   file.size → size-in-KB
+ *   file.path → opened via fs.createReadStream
+ * Using modern `originalFilename`/`mimetype`/`filepath` WOULD silently produce
+ * undefined and crash inside path.extname. Keep this shape.
+ *
+ * Writes the buffer to a temp file, hands a correctly-shaped payload to `fn`,
+ * and always removes the temp file afterwards. (The upload service also creates
+ * its own `tmpWorkingDirectory` and rimrafs that separately — it is NOT our
+ * temp file, so this cleanup is still required.)
+ */
+async function withTmpJpeg<T>(
+  buffer: Buffer,
+  fileName: string,
+  fn: (file: {
+    path: string;
+    name: string;
+    type: string;
+    size: number;
+  }) => Promise<T>
+): Promise<T> {
   const tmpPath = path.join(
     os.tmpdir(),
     `${Date.now()}-${Math.random().toString(36).slice(2)}-${fileName}`
@@ -182,6 +188,25 @@ async function uploadJpegToStrapi(params: {
   await fs.writeFile(tmpPath, buffer as unknown as Uint8Array);
 
   try {
+    return await fn({
+      path: tmpPath,
+      name: fileName,
+      type: "image/jpeg",
+      size: buffer.length,
+    });
+  } finally {
+    await fs.unlink(tmpPath).catch(() => {});
+  }
+}
+
+async function uploadJpegToStrapi(params: {
+  buffer: Buffer;
+  fileName: string;
+  folderId?: number | null;
+}): Promise<{ id: number }> {
+  const { buffer, fileName, folderId } = params;
+
+  return withTmpJpeg(buffer, fileName, async (file) => {
     const uploaded = await strapi
       .plugin("upload")
       .service("upload")
@@ -191,15 +216,10 @@ async function uploadJpegToStrapi(params: {
             name: fileName,
             alternativeText: fileName,
             caption: "",
-            ...(params.folderId != null ? { folder: params.folderId } : {}),
+            ...(folderId != null ? { folder: folderId } : {}),
           },
         },
-        files: {
-          path: tmpPath,
-          name: fileName,
-          type: "image/jpeg",
-          size: buffer.length,
-        } as any,
+        files: file as any,
       });
 
     const first = Array.isArray(uploaded) ? uploaded[0] : uploaded;
@@ -207,36 +227,91 @@ async function uploadJpegToStrapi(params: {
       throw new Error("[og-image] Upload plugin returned no file id");
     }
     return { id: first.id };
-  } finally {
-    await fs.unlink(tmpPath).catch(() => {});
-  }
+  });
 }
 
-async function deleteStrapiFile(id: number): Promise<void> {
-  try {
-    const existing = await strapi
-      .plugin("upload")
-      .service("upload")
-      .findOne(id);
-    if (existing) {
-      await strapi.plugin("upload").service("upload").remove(existing);
+/**
+ * Overwrites an existing media-library file in place. Strapi's `replace`
+ * deliberately keeps the original hash + extension (see
+ * plugin-upload/server/services/upload.js), so the public URL does NOT change.
+ * That is what keeps already-shared social cards (X, LinkedIn, Discord, …) and
+ * any cached page from breaking whenever an article is re-published.
+ * Returns false if the file record no longer exists.
+ */
+async function replaceJpegInStrapi(
+  fileId: number,
+  buffer: Buffer,
+  fileName: string
+): Promise<boolean> {
+  const uploadService = strapi.plugin("upload").service("upload");
+  const existing = await uploadService.findOne(fileId);
+  if (!existing) return false;
+
+  // Preserve the file's existing folder so `replace` doesn't relocate it.
+  const folder =
+    existing.folder && typeof existing.folder === "object"
+      ? (existing.folder as { id?: number }).id
+      : (existing.folder as number | null | undefined);
+
+  await withTmpJpeg(buffer, fileName, async (file) => {
+    await uploadService.replace(fileId, {
+      data: {
+        fileInfo: {
+          name: fileName,
+          alternativeText: fileName,
+          caption: "",
+          ...(folder != null ? { folder } : {}),
+        },
+      },
+      file: file as any,
+    });
+  });
+
+  return true;
+}
+
+/**
+ * Serializes OG generation per post id within this process. A normal Strapi
+ * publish fires several updates in quick succession; previously these raced —
+ * concurrent runs could delete the very file the post had just been pointed at,
+ * leaving `og_image` referencing a deleted file (the "image not found" bug).
+ * Queuing per post id makes each run observe the previous run's result.
+ */
+const inFlightByPost = new Map<number, Promise<unknown>>();
+
+function withPostLock<T>(postId: number, fn: () => Promise<T>): Promise<T> {
+  const prev = inFlightByPost.get(postId) ?? Promise.resolve();
+  const run = prev.then(() => fn());
+  // `tracked` never rejects, so the next queued call always proceeds.
+  const tracked = run.then(
+    () => undefined,
+    () => undefined
+  );
+  inFlightByPost.set(postId, tracked);
+  void tracked.finally(() => {
+    if (inFlightByPost.get(postId) === tracked) {
+      inFlightByPost.delete(postId);
     }
-  } catch (e) {
-    strapi.log.warn(
-      `[og-image] Failed to delete previous og_image id=${id}: ${
-        (e as Error).message
-      }`
-    );
-  }
+  });
+  return run;
 }
 
+// Retained for backward compatibility with existing callers (e.g. the backfill
+// script). In-place replacement now keeps the URL stable, so there is no longer
+// a previous file to delete — `replacePrevious` is accepted but unused.
 export interface GenerateOptions {
   replacePrevious?: boolean;
 }
 
 export async function generateOgImageForPost(
   postId: number,
-  options: GenerateOptions = {}
+  _options: GenerateOptions = {}
+): Promise<{ fileId: number } | null> {
+  return withPostLock(postId, () => generateOgImageForPostUnlocked(postId));
+}
+
+async function generateOgImageForPostUnlocked(
+  postId: number
 ): Promise<{ fileId: number } | null> {
   const post = (await strapi.entityService.findOne("api::post.post", postId, {
     populate: {
@@ -276,8 +351,26 @@ export async function generateOgImageForPost(
 
   const buffer = await fetchOgJpeg(ogUrl);
   const fileName = `og-${post.slug || post.id}.jpg`;
+  const existingId = post.og_image?.id ?? null;
 
-  const previousId = post.og_image?.id ?? null;
+  // Reuse the existing media file when possible so the public URL never changes
+  // across regenerations. This keeps previously-shared social cards working and
+  // means there is no old file to delete (no delete race, no orphan cleanup).
+  if (existingId != null) {
+    const replaced = await replaceJpegInStrapi(existingId, buffer, fileName);
+    if (replaced) {
+      strapi.log.info(
+        `[og-image] Replaced file id=${existingId} in place for post id=${post.id}`
+      );
+      return { fileId: existingId };
+    }
+    strapi.log.warn(
+      `[og-image] og_image id=${existingId} no longer exists for post id=${post.id}; creating a fresh file`
+    );
+  }
+
+  // First-time generation (or the previous record was deleted): create once.
+  // From here on, future regenerations overwrite this file in place.
   const folderId = await getOrCreateOgFolder();
   const { id: fileId } = await uploadJpegToStrapi({
     buffer,
@@ -290,20 +383,8 @@ export async function generateOgImageForPost(
     data: { og_image: fileId },
   });
 
-  // Delete the previous og_image if it's different from the new one.
-  if (options.replacePrevious && previousId && previousId !== fileId) {
-    await deleteStrapiFile(previousId);
-  }
-
-  const orphans = (await strapi.db.query("plugin::upload.file").findMany({
-    where: { name: fileName, id: { $ne: fileId } },
-  })) as Array<{ id: number }>;
-  for (const orphan of orphans) {
-    await deleteStrapiFile(orphan.id);
-  }
-
   strapi.log.info(
-    `[og-image] Attached file id=${fileId} to post id=${post.id}`
+    `[og-image] Attached new file id=${fileId} to post id=${post.id}`
   );
 
   return { fileId };
